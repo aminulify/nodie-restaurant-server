@@ -49,24 +49,21 @@ const sendPaymentConfirmationEmail = payment => transporter.sendMail({
 const verifyJWT = (req, res, next)=>{
 
   const authorization = req.headers.authorization;
-  // console.log('first check authorization',authorization);
+
   
   if(!authorization){
-    console.log('error 1');
     return res.status(401).send({error: true, message: 'unauthorized access'});
   }
 
   // authorization example: bearer token 
   // after split show ['bearer'],[token]; fist index bearer and second index token
-  // console.log('author',authorization);
   const token = authorization.split(' ')[1]; 
-  // console.log(process.env.ACCESS_TOKEN_SECRET, 'token check',token);
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
     if(err){
-      console.log('error 2')
+  
       return res.status(401).send({error: true, message: 'unauthorize access'})
     }
-    // console.log('ddecoed',decoded);
+   
     req.decoded = decoded;
     next();
   })
@@ -100,7 +97,6 @@ async function run() {
     // jwt 
     app.post('/jwt', (req,res)=>{
       const user = req.body;
-      // console.log('user', user);
       const token = jwt.sign( user, process.env.ACCESS_TOKEN_SECRET ); 
       // const token = jwt.sign( user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' } ); 
       res.send({ token });
@@ -122,7 +118,6 @@ async function run() {
     // users 
     app.post('/users', async(req,res)=>{
       const user = req.body;
-      // console.log(user);
   
       const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
@@ -141,13 +136,11 @@ async function run() {
      */
     app.get('/users', verifyJWT, verifyAdmin, async(req,res)=>{
       const result = await usersCollection.find().toArray();
-      // console.log(result);
       res.send(result);
     })
 
     app.delete('/users/:id',async(req,res)=>{
       const id = req.params.id;
-      // console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
       res.send(result);
@@ -156,7 +149,6 @@ async function run() {
     // admin set / user role update
     app.patch('/users/admin/:id', async(req,res)=>{
       const id = req.params.id;
-      // console.log(id);
       const filter = { _id: new ObjectId(id) };
 
       const updateDoc = {
@@ -187,7 +179,6 @@ async function run() {
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       const result = { admin: user?.role === 'admin' };
-      // console.log('check user admin',result);
       res.send(result);
     })
 
@@ -195,13 +186,11 @@ async function run() {
     // menu related 
     app.get('/menu', async(req,res)=>{
         const result = await menuCollection.find().toArray();
-        // console.log(result);
         res.send(result);
     })
 
     app.get('/menu/category/:id', async(req,res)=>{
       const id = req.params.id; 
-      // console.log(id);
       const filter = { _id: new ObjectId(id) };
       const result = await menuCollection.findOne(filter);
       res.send(result);
@@ -242,7 +231,6 @@ async function run() {
     app.get('/reviews', async(req,res)=>{
         const result = await reviewsCollection.find().sort({_id: -1}).toArray();
         // sort({_id: -1}) // sort it new data show first
-        // console.log(result);
         res.send(result);
     })
 
@@ -280,7 +268,6 @@ async function run() {
 
     app.patch('/bookings/:id', async(req,res)=>{
       const id = req.params.id;
-      // console.log(id);
       const query = {_id: new ObjectId(id)};
 
       const updateDoc = {
@@ -289,7 +276,6 @@ async function run() {
         }
       }
       const result = await bookingsCollection.updateOne(query, updateDoc);
-      // console.log(result);
       res.send(result);
     })
 
@@ -297,31 +283,25 @@ async function run() {
     // cart collection 
     app.post('/carts', async(req,res)=>{
       const item = req.body;
-      // console.log(item);
       const result = await cartCollection.insertOne(item);
       res.send(result);
     })
 
     app.get('/carts', verifyJWT, async(req, res)=>{
       const email = req.query.email;
-      // console.log(email);
 
       if(!email){
         res.send([]);
       }
 
       const decodedEmail = req.decoded.email;
-    
-      // console.log('deEmail',decodedEmail, 'email', email);
 
       if(email !== decodedEmail){
-        // console.log('error3');
         return res.status(403).send({error: true, message: 'Forbidden Access'})
       }
 
       const query = { email: email };
       const result = await cartCollection.find(query).toArray();
-      // console.log(result);
       res.send(result);
     })
 
@@ -333,13 +313,11 @@ async function run() {
     // get all users products of admin 
     app.get('/all_products', async(req, res)=>{
         const result = await cartCollection.find().toArray();
-        // console.log(result);
         res.send(result);     
     })
 
     app.delete('/carts/:id', async(req,res)=>{
       const id = req.params.id;
-      // console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
@@ -348,17 +326,13 @@ async function run() {
     // create payment intent stripe 
    app.post('/create-payment-intent',  async(req,res)=>{
     const {price} = req.body;
-    // console.log(price);
     const OrderAmount = ((price*100).toFixed(1)*1);
-    // console.log(OrderAmount);
     const paymentIntent = await stripe.paymentIntents.create({
       
       amount: OrderAmount,
       currency: "usd",
       payment_method_types: ["card"],
     })
-    // console.log('send 1');
-    // console.log(paymentIntent.client_secret);
     res.send({
       clientSecret: paymentIntent.client_secret
     })
@@ -367,7 +341,6 @@ async function run() {
   //  payment received data api
   app.post('/payments', async(req,res)=>{
     const payment = req.body;
-    // console.log(payment);
     const insertResult = await paymentCollection.insertOne(payment);
     
     const query = {_id: {$in: payment.cardItems.map(id => new ObjectId(id))}};
@@ -375,7 +348,6 @@ async function run() {
 
     // send an email confirming payment
      sendPaymentConfirmationEmail(payment);
-    // console.log(insertResult, deleteResult);
     res.send({insertResult, deleteResult});
   }) 
 
@@ -384,15 +356,6 @@ async function run() {
     const users = await usersCollection.estimatedDocumentCount();
     const products = await menuCollection.estimatedDocumentCount();
 
-    // *** best way to get sum of a field is to use group and sum operation 
-    // const revenue = paymentCollection.aggregate([
-    //   {
-    //     $group: {
-    //       _id: null,
-    //       totalAmount: { $sum: '$price' },
-    //     },
-    //   },
-    // ]).toArray();
     const payments = await paymentCollection.find().toArray();
     
     const orders = payments.reduce((sum, currentValue)=> sum + currentValue.menuItems.length, 0);
@@ -446,17 +409,14 @@ async function run() {
     ];
 
     const result = await paymentCollection.aggregate(pipeline).toArray();
-    // console.log(result);
     res.send(result);
   })
 
   // payment history 
   app.get('/user_payout/:email', async(req,res)=>{
     const email = req.params.email;
-    // console.log(email);
     const value = {email: email}
     const result = await paymentCollection.find(value).toArray();
-    // console.log(result);
     res.send(result);
 
   })
@@ -476,30 +436,9 @@ async function run() {
 }
 run().catch(console.dir);
 
-
-
 app.get('/',(req,res)=>{
     res.send('Nodie Cods Restaurant Is Running')
 })
 app.listen(port,()=>{
     console.log(`Nodie Cods Restaurant Is Running ${port}`);
 })
-
-
-
-/**
- * 
- * 
- * ------------------
- *   NAMING CONVENTION
- * ----------------------
- * USER : userCollection
- * app.get('/users')
- * app.get('/users/:id')
- * app.post('/users')
- * app.patch('/users/:id')
- * app.put('/users/:id')
- * app.delete('/users/:id')
- * 
- * 
- */
